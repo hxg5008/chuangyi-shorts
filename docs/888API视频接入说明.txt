@@ -1,0 +1,78 @@
+888API Seedance 视频接入与验收
+
+已真实验收的通道
+  provider: 888api
+  Base URL: https://888api.xin
+  model: seedance2.0-933-c5-fast
+  创建: POST /v1/videos
+  查询: GET /v1/videos/{任务编号}
+  鉴权: Authorization: Bearer <自己的 API Key>
+  Content-Type: application/json
+
+外部请求示例（images 必须替换为真实、有效的公网图片直链）
+{
+  "model": "seedance2.0-933-c5-fast",
+  "prompt": "参考@图1的场景和@图2的人物，人物在木桌旁自然转头，单一完整画面，不出现参考板排版或标签。",
+  "duration": 9,
+  "resolution": "720p",
+  "ratio": "16:9",
+  "images": [
+    "https://example.com/scene.png",
+    "https://example.com/character.png"
+  ]
+}
+
+接口契约依据：https://888api.xin/docs#pidoi-video
+  本次接入 C5 的整数 4–15 秒、720p、最多 9 张参考图。
+  它使用 JSON 的 images，不使用火山 content[] 或 VIP 的 image_file_N 表单。
+  当前适配范围为文字和参考图片；参考音视频、角色音色、首尾帧及文件引用会明确拒绝。
+  文档给 C5 的上游能力包含最多 3 视频、3 音频，但这些引用尚未在本工作台接入或验收。
+  C5 文档未公开 generate_audio、seed、watermark、prompt_extend 开关，本工作台会拒绝显式设置，避免接收后假装生效。
+  音轨由平台默认行为决定；成功成片含 AAC 音轨不代表 generate_audio 参数受支持。
+  文档称 C5 支持“全比例”，本工作台目前提供六种常用画幅，不能视为上游的完整封闭枚举。
+
+工作台设置
+  在设置中添加“视频 / 888API”，选择 C5 Fast，并填写自己的 Key。
+  现已保存配置“888API Seedance · C5 Fast”（ID 4），只列出实测通过的 C5。
+  原项目的集锁定配置保持原值；在视频模型下拉中显式选择这份 888API 配置即可使用。
+  场景、角色、道具参考图按相同顺序生成图片数组和编号；C5 使用 @图N。
+  本地 /api/v1/tasks 支持文档原生 ratio/images/videos/audios 与工作台内部对应字段映射。
+  同一参数两种名称给出不同值时会拒绝；seconds 或其他型号的 functionMode/file_paths 等字段会明确报错。
+  工作台不再发送 generate_audio；新任务记录 audioControl=provider_default，不把未传到平台的开关记为已开启。
+
+本机图片如何传给 C5
+  HTTPS 图片直链可直接使用；本机生成图会按完全相同的 localPath 查找原图片任务保存的 resultUrl。
+  配置了 PUBLIC_BASE_URL 时优先使用该公网基址，不替换素材本地路径。
+  提交前以 GET Range 检查图片当前是否可读，不将 localhost、私网地址或 data URI 发送给 C5。
+  原生成链接通常有有效期；预检只代表当时可读，链接必须在排队和生成期间持续有效。
+  纯本地上传图如果没有公网源地址，需要配置可访问的 PUBLIC_BASE_URL 或使用有效图片直链。
+
+任务及下载
+  创建只提交一次并保存平台任务编号；后续查询同一编号。
+  只有平台完成且视频已下载保存后，本地任务才标为完成并写回分镜。
+  内容接口的鉴权仅用于原服务同源的该任务 /content 地址；重定向跨域时移除凭据。
+  下载失败可恢复原任务，不重新提交生成。创建结果不明确时保留诊断，避免重复扣费。
+  配置凭据保存在本机数据库；请求日志和异常日志均脱敏。
+
+真实验收结果（2026-11-03，北京时间）
+  项目：888API Seedance 接入验收（项目 3 / 第 2 集，episode ID 4）
+  本地任务：76；分镜：15
+  模型：seedance2.0-933-c5-fast
+  参考：堂屋场景四视图 + 成年男子三视图，共 2 张。
+  请求：9 秒、720p、16:9。
+  结果：completed，已回写分镜与任务列表。
+  文件：data/static/videos/task-76.mp4，3,805,791 字节。
+  检测：1280×720，24fps，H.264 视频 + AAC 音频，总时长 9.088 秒。
+  完整 FFmpeg 解码通过；首、中、尾抽帧可见参考人物和房间，没有把资料板分格或标签带入抽帧画面。
+  工作台：http://127.0.0.1:5679/drama/3/episode/4
+  视频：http://127.0.0.1:5679/static/videos/task-76.mp4
+
+其他通道的验收边界
+  fast-vip 首次真实提交返回上游 502，平台用量记录为失败、quota=0；本地保留失败任务 75。
+  VIP 三款的表单适配有本地测试，但没有完成真实视频验收，不视为当前平台可用保证。
+  当前配置只保留已实测完成的 C5，原项目 13 条分镜没有被这次验收修改。
+
+无密钥的本机验收证据
+  data/local-runtime/888api-c5-acceptance-request.json：工作台内部请求参数。
+  data/local-runtime/888api-c5-acceptance-result.json：文件校验、状态回写与 HTTP 检查。
+  data/local-runtime/888api-c5-tests.log：适配器、素材桥接、生命周期及日志测试结果。

@@ -1,0 +1,11 @@
+import test from 'node:test'
+import assert from 'node:assert/strict'
+import {readFileSync} from 'node:fs'
+import {dismissToastInteraction} from '../app/utils/toast-dismiss.js'
+import {notificationTop} from '../app/utils/toast-placement.js'
+function fixture({interactive=false,dismissible=true,hasClose=true,disabled=false}={}){let clicks=0,prevented=false;const close={disabled:false,dataset:{disabled:String(disabled)},click(){clicks++}},toast={dataset:{dismissible:String(dismissible)},querySelector:()=>hasClose?close:null};return{event:{type:'click',target:{closest:s=>s==='[data-sonner-toast]'?toast:interactive?{}:null},preventDefault(){prevented=true}},clicks:()=>clicks,prevented:()=>prevented}}
+test('clicking toast body dismisses its own notification',()=>{const f=fixture();assert.equal(dismissToastInteraction(f.event),true);assert.equal(f.clicks(),1)})
+test('action buttons links and non-dismissible notifications keep their own behavior',()=>{for(const config of [{interactive:true},{dismissible:false},{disabled:true},{hasClose:false}]){const f=fixture(config);assert.equal(dismissToastInteraction(f.event),false);assert.equal(f.clicks(),0)}})
+test('Enter and Space dismiss a focused notification without affecting other keys',()=>{for(const key of ['Enter',' ','Escape']){const f=fixture();f.event.type='keydown';f.event.key=key;const expected=key!=='Escape';assert.equal(dismissToastInteraction(f.event),expected);assert.equal(f.prevented(),expected)}})
+test('global toaster is below controls and preserves automatic expiry',()=>{const source=readFileSync(new URL('../app/app.vue',import.meta.url),'utf8');assert.match(source,/position="top-right"/);assert.match(source,/top:toastTop/);assert.match(source,/:duration="3000"/);assert.match(source,/close-button/);assert.match(source,/@click="dismissToastInteraction"/)})
+test('notification sits immediately below visible navigation and follows wrapped headers',()=>{const node=rect=>({getBoundingClientRect:()=>rect}),doc={querySelectorAll:selector=>selector==='.studio-topbar'?[node({height:0,top:0,bottom:0}),node({height:40,top:8,bottom:48})]:[]};assert.equal(notificationTop(doc,800),56);assert.equal(notificationTop({querySelectorAll:()=>[node({height:100,top:0,bottom:100})]},800),108);assert.equal(notificationTop({querySelectorAll:()=>[]},800),72)})

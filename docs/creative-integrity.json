@@ -1,0 +1,44 @@
+{
+  "protectedCount": 57,
+  "unchanged": 55,
+  "changed": [
+    "backend/src/agents/tools/image-prompt-tools.ts",
+    "backend/src/services/agent-jobs.ts"
+  ],
+  "skillAndPromptFilesUnchanged": true,
+  "toolSchemas": [
+    {
+      "file": "extract-tools.ts",
+      "count": 8,
+      "identical": true
+    },
+    {
+      "file": "script-tools.ts",
+      "count": 3,
+      "identical": true
+    },
+    {
+      "file": "storyboard-tools.ts",
+      "count": 3,
+      "identical": true
+    },
+    {
+      "file": "image-prompt-tools.ts",
+      "count": 6,
+      "identical": true
+    }
+  ],
+  "storyboardSchemas": [
+    {
+      "name": "buildNarrativePlanSchema",
+      "present": true,
+      "identical": true
+    },
+    {
+      "name": "buildCompleteStoryboardSchema",
+      "present": true,
+      "identical": true
+    }
+  ],
+  "modelRequests": 0
+}

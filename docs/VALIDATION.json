@@ -1,0 +1,86 @@
+{
+  "backend": {
+    "tests": 1144,
+    "pass": 1144,
+    "fail": 0,
+    "skipped": 0,
+    "failures": []
+  },
+  "frontend": {
+    "tests": 268,
+    "pass": 246,
+    "fail": 22,
+    "skipped": 0,
+    "failures": [
+      "add episode dialog asks for a title and a fixed video resolution",
+      "add episode dialog does not preload config lists",
+      "addEpisode posts drama_id, title and resolution",
+      "asset library page lists character and scene images",
+      "create dialog fixes aspect ratio at project creation",
+      "drama detail header links to the asset library page",
+      "episode card exposes a delete action",
+      "episode card resolution is editable via a dropdown persisted to episodes.resolution",
+      "episode status is manually marked, not derived from script content",
+      "global buttons use the apple-inspired action palette",
+      "project creation dialog only asks for title and visual style",
+      "project launcher keeps controls simple",
+      "project list opens project detail before choosing an episode",
+      "project status is manually marked, not derived from content",
+      "settings page exposes official provider templates only",
+      "settings page manages style presets in a base tab",
+      "settings page offers official default model IDs",
+      "tests/apple-light-theme-structure.test.mjs",
+      "tests/button-system-structure.test.mjs",
+      "tests/model-selection-structure.test.mjs",
+      "tests/professional-redesign-surface.test.mjs",
+      "tests/remove-grid-feature-structure.test.mjs"
+    ]
+  },
+  "frontendBaseline": {
+    "tests": 262,
+    "fail": 22
+  },
+  "backendStructures": {
+    "tests": 49,
+    "pass": 33,
+    "fail": 16,
+    "skipped": 0,
+    "failures": [
+      "AI config probe uses provider-specific auth schemes",
+      "MiniMax image and video provider surfaces are removed",
+      "MySQL startup removes all saved MiniMax configurations including audio",
+      "backend rejects unsupported providers at DB and route boundaries",
+      "characters and scenes tables store the agent-written final prompt",
+      "characters route supports manual create and soft delete",
+      "episode merge uses generated videos directly without requiring compose output",
+      "image generation prefers the stored final prompt with agent generation and legacy fallback",
+      "image/video generation tasks are unified into a single sys_task table",
+      "prompt agent instructions reference per-asset skills; skill files define the specs",
+      "prompt_generator video prompt format uses @name references instead of XML tags",
+      "props route supports manual create and soft delete",
+      "scenes route links new scenes to episode and soft deletes",
+      "text agents keep OpenAI provider routing for non-Gemini configs",
+      "text agents use the official Gemini provider for gemini configs",
+      "video resolution is fixed per episode, editable, and locked into video tasks"
+    ]
+  },
+  "backendStructureBaseline": {
+    "tests": 49,
+    "fail": 16
+  },
+  "zeroNewFrontendFailures": true,
+  "zeroNewStructureFailures": true,
+  "typecheck": true,
+  "productionBuild": true,
+  "protectedSource": {
+    "templateFiles": 44,
+    "unchangedTemplates": 44,
+    "toolSchemas": 20,
+    "storyboardSchemas": 2,
+    "allIdentical": true
+  },
+  "modelRequests": 0,
+  "productionDataAccess": false,
+  "browserVisualQa": false,
+  "notes": "Actual SDK to local mocks and temporary data. No production deployment or paid request. Existing structure failures compared by exact name."
+}

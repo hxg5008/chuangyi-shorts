@@ -1,0 +1,9 @@
+const labels={queued:'待派发',running:'执行中',paused:'已暂停派发',completed:'已完成',ready:'已就绪',completed_with_errors:'部分失败',failed:'失败',input_stale:'输入已变更',needs_review:'待核对',blocked:'等待前序',interrupted:'已中断',not_recorded:'暂无记录',partial:'部分完成'}
+export const productionStatus=value=>labels[value]||value||'状态未提供'
+export const productionTone=value=>['failed','input_stale','interrupted','completed_with_errors'].includes(value)?'danger':value==='needs_review'?'warning':['completed','ready'].includes(value)?'success':value==='running'?'active':'neutral'
+export const productionSeconds=value=>value===null||value===undefined||!Number.isFinite(Number(value))?'未提供':Math.max(0,Math.floor(Number(value)))+' 秒'
+export const productionDate=value=>{if(!value)return '未提供';const date=new Date(value);return Number.isNaN(date.getTime())?'未提供':date.toLocaleString('zh-CN',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'})}
+export const episodeHasExtractionInput=episode=>!!String(episode.script_content||episode.scriptContent||episode.content||'').trim()
+export const extractionSourceLabel=episode=>String(episode.script_content||episode.scriptContent||'').trim()?'使用已有剧本':String(episode.content||'').trim()?'使用原始内容':'没有可提取内容'
+export function activityLink(task,projectId){const link=task?.links?.activity;if(!link?.task_id)return '';const query=new URLSearchParams({task_id:String(link.task_id)});const project=task.project_id||task.drama_id||projectId;if(project)query.set('drama_id',String(project));if(link.round_id)query.set('round_id',String(link.round_id));return '/tasks?'+query}
+export function assetLink(task,projectId){const link=task?.links?.asset,project=task?.project_id||task?.drama_id||projectId;if(!link||!project)return '';const query=new URLSearchParams({tab:'assets'});if(['character','scene','prop'].includes(link.kind))query.set('asset_kind',link.kind);if(Number(link.id)>0)query.set('asset_id',String(link.id));return '/drama/'+Number(project)+'?'+query}

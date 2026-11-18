@@ -1,0 +1,24 @@
+{
+    "builtAt":  "2026-11-07T04:30:24.4243056Z",
+    "upstream":  "ddcat-ai/open-ai-canvas review-20261101",
+    "sha256":  "0dfa199a8c265314bf51d1f9646ccb5bf6b1e670e9dda8bd890cf405d39083fa",
+    "goVersion":  "go version go1.26.2 windows/amd64",
+    "binaries":  {
+                     "darwin-arm64":  {
+                                          "sha256":  "7695f38ea5209fc31f0bde2094257737e33058731bfa3cb8898a1df761abfef5",
+                                          "filename":  "provider-engine-darwin-arm64"
+                                      },
+                     "linux-x64":  {
+                                       "sha256":  "793daf87bc0991abae6a288bab1966cec4c15c8a0b759c6e6e7bfeda68a5e37b",
+                                       "filename":  "provider-engine-linux-amd64"
+                                   },
+                     "linux-arm64":  {
+                                         "sha256":  "8a7064c0c6ab8fa7ae663b12f9cf5f017b40ea314afbac17bab5b7ce9aeffeab",
+                                         "filename":  "provider-engine-linux-arm64"
+                                     },
+                     "win32-x64":  {
+                                       "sha256":  "0dfa199a8c265314bf51d1f9646ccb5bf6b1e670e9dda8bd890cf405d39083fa",
+                                       "filename":  "provider-engine-windows-amd64.exe"
+                                   }
+                 }
+}

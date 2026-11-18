@@ -1,0 +1,15 @@
+{
+  "checks": [
+    "isolated_admin_login",
+    "style_catalog_count_and_categories",
+    "packaged_cover_served",
+    "real_http_atomic_import_idempotent_replay",
+    "finished_script_content_preserved",
+    "source_download_exact_bytes",
+    "built_frontend_routes_served",
+    "another_user_cannot_read_source_or_admin_configuration"
+  ],
+  "passed": 8,
+  "modelRequests": 0,
+  "browserVisualInspection": false
+}

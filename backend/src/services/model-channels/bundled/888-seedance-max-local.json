@@ -1,0 +1,947 @@
+{
+  "apiVersion": "yingce.plugin/v2",
+  "id": "888-seedance-max-local",
+  "name": "888API Seedance MAX / C5 Fast",
+  "version": "1.1.0",
+  "author": "本地接入",
+  "description": "???? 888API Seedance MAX ? C5 Fast ? /v1/videos ????????",
+  "documentation": "# 888API Seedance MAX／C5 Fast 本地协议插件\n\n只适配 `https://888api.xin` 的两个已核验型号，各自使用独立协议 ID：`seedance2.5-301010-max` 对应 `888-seedance-max-local`；`seedance2.0-933-c5-fast` 对应 `888-seedance-c5-local`。用于避免把这些型号误选为 NewAPI Channel 2，后者发送 `/v1/video/generations`、`image_urls`，不等同于这些型号官方文档列出的 `/v1/videos`、`images`。插件包 ID 沿用 `888-seedance-max-local`，不改变已存在 MAX 协议 ID。\n\n接口来源：[888API 开发者文档](https://888api.xin/docs#seedance2.5-301010-max)。公开文档声明 MAX 支持 4 至 30 秒、720p、最多 30 张图片、10 段视频和 10 段音频；C5 Fast 支持 4 至 15 秒、720p、最多 9 张图片、3 段视频和 3 段音频。实际可用性、计费和账号权限仍由上游决定。\n\n生成文件为同级 `888-seedance-max-local.yingce-plugin`，在影策插件中心导入后，为当前渠道型号选择对应协议，MAX 使用 `docs/capability-profile.json`，C5 Fast 使用 `docs/capability-profile-c5.json`。两个 provider 的型号校验、时长及素材上限分别执行，不能混用。仅导入插件不会自动修改用户选中的模型、渠道、价格或正在运行的任务。\n\n此插件没有执行脚本，只有声明式请求模板。不会自行重发生成、重试未知结果、改写提示词或下载账号资料。完整字段见 [MAX 接口](docs/interface.md)及 [C5 Fast 接口](docs/interface-c5.md)。\n\n\n---\n\n# 888API Seedance 2.5 MAX 接口字段\n\n## 接口\n\n- 默认地址：`https://888api.xin`。\n- 创建：`POST /v1/videos`，JSON 请求体。\n- 查询：`GET /v1/videos/{task_id}`，只查询已经确认的原任务。\n- 结果兜底：`GET /v1/videos/{task_id}/content`，带同一渠道的 Bearer 认证。\n- 所有路径从网站根路径开始拼接，渠道地址不要再附加创建路径。\n\n## 模型\n\n插件仅接受公开型号 `seedance2.5-301010-max`。相似的 `-wool`、`-c3`、H3、快速版以及其它型号可能有完全不同字段，不能通过替换模型名共用此合同。\n\n此型号的公开规格为 720p、4 至 30 秒整数、最多 30 张图片、10 段视频和 10 段音频。参考素材必须能由上游服务直接读取；本地浏览器中能看到缩略图，不代表图片已随请求提交，也不代表该地址可由上游访问。\n\n## 参数\n\n| 参数 | 上游字段 | 规则 |\n| --- | --- | --- |\n| `model` | `model` | 固定型号，必填。 |\n| `prompt` | `prompt` | 完整原文，不能为空。插件不翻译、不重写。 |\n| `duration` | `duration` | 4 至 30 秒整数；不发送 `seconds`。 |\n| `aspectRatio` | `ratio` | 默认 16:9，按公开通用画幅合同声明可选比例。 |\n| `resolution` | `resolution` | 固定输出 `720p`，接收大小写对应的 720P。 |\n| `images` | `images` | 图片 URL 数组，按媒体的 order 排序，最多 30 张。 |\n| `videos` | `videos` | 视频 URL 数组，最多 10 段。 |\n| `audios` | `audios` | 音频 URL 数组，最多 10 段。 |\n\n`apiKey` 写入 `Authorization: Bearer` 请求头，不放在 URL 中。此型号有原生音频，宿主的音频能力须保持开启，以便短剧撰写对白和音效；它没有在此合同中声明独立的关闭音频、水印或提示词扩写开关，因此插件不会虚构 `generate_audio` 等参数，且会明确拒绝请求关闭音频。型号本身的原生音频能力与“可配置的生成音频开关”是两件事。\n\n## 官方来源\n\n以 [888API 当前开发者文档](https://888api.xin/docs)的“视频模型与参数”和“请求参数”章节为准。本文记录的是已核对的型号和线协议，不把通用 NewAPI 的能力默认值当作该账号的生成权限或余额证明。\n\n## 宿主运行时合同\n\n本插件声明 `requiresPublicMediaUrls=true`，宿主必须把平台资源引用解析为上游可访问的 URL。参考图片的编号严格依照实际发送数组，不能只在提示词里写“参考图1”而不附图，也不能超过上限时静默截断。\n\n建议短剧项目使用“并行出片”和 `reference_to_video`。本插件没有核实首帧、尾帧的专用字段，因此拒绝 `image_to_video` 及 `first_frame`、`last_frame`、`mask` 等角色输入，避免把它们误当普通参考图。希望做前后段尾帧续接时，需要另行核对有明确首帧字段的合同。\n\n创建只返回任务编号和受理状态，不代表视频已经完成。查询成功时从实际响应中的 `url`、`video_url`、`result_url` 或元数据读取完整结果地址，宿主应及时保存媒体。没有结果 URL 时可使用上述 `/content` 路径恢复原任务结果。失败状态与上游错误保留为失败，不包装成成功；插件不声明创建幂等性，也不自行重新创建收费任务。\n\n包内的 `docs/capability-profile.json` 是管理员编辑当前型号时可采用的范围：开放文生视频和参考图生视频，图片上限 30，清晰度仅 720p，原生音频能力开启。`promptMaxChars=8000` 是本地保守日志／任务边界，不声称是供应商所有场景的绝对上限。未公开的文件字节与总时长限制保留为 0（未声明），不得据此声称无限制。\n\n\n---\n\n# 888API Seedance 2.0 C5 Fast 接口字段\n\n本 provider ID 为 `888-seedance-c5-local`，只接受公开型号 `seedance2.0-933-c5-fast`。它与同包 MAX provider 共用已核对的 `/v1/videos` 线协议，但分别验证型号和上限，不能拿 MAX 的 30 图或 30 秒范围发送给 C5。\n\n来源：[888API 开发者文档的 C5 Fast 型号](https://888api.xin/docs#seedance2.0-933-c5-fast)。公开范围为 **4–15 秒、720p、9 张图片／3 段视频／3 段音频、全比例**。该型号所在行没有声明图片、视频、音频合并后的总数量上限，因此本插件只分别执行公开数量限制，不套用其它 C4 或 933 型号的合计 12 项限制。未公开的文件字节数及参考总时长也不自行猜测，账号服务仍可基于实际素材作进一步校验。\n\n创建 `POST /v1/videos`，Bearer Key 写入请求头，JSON 字段为：`model`、`prompt`、整数 `duration`、`ratio`、固定 `resolution:720p`，以及按实际输入顺序排列的 `images`、`videos`、`audios` URL 数组。没有素材的数组不发送；不会发送 NewAPI Channel 2 的 `image_urls` 或 `seconds` 字段。\n\n查询 `GET /v1/videos/{task_id}`，结果兜底 `GET /v1/videos/{task_id}/content`。所有查询恢复原任务，不能自动重新创建。公开视频地址由宿主及时下载保存。\n\n此接口只开放 `text_to_video`、`reference_to_video`。没有核对首帧／尾帧专用字段，因此拒绝 `image_to_video` 与 `first_frame`、`last_frame`、`mask` 等输入角色。短剧项目请使用“并行出片”，按已选择的参考资产生成。\n\n宿主的音频能力保持 `supported:true/default:true`，以保留人物对白和音效撰写。插件不添加文档未声明的 `generate_audio` 控制字段；关闭音频请求会在本地明确拒绝。水印开关同样不虚构。\n\n管理员能力配置见 `docs/capability-profile-c5.json`。导入插件及修正当前渠道模型能力，不会改变用户项目此刻选择的型号，也不会补改已经完成视频的历史参考图。\n",
+  "permissions": [
+    "generation.run",
+    "media.read"
+  ],
+  "configuration": {
+    "fields": [
+      {
+        "name": "apiKey",
+        "type": "secret",
+        "label": "888API Key",
+        "required": true
+      }
+    ]
+  },
+  "contributes": {
+    "providers": [
+      {
+        "id": "888-seedance-max-local",
+        "label": "888API · Seedance 2.5 MAX",
+        "capabilities": [
+          "video"
+        ],
+        "scopes": [
+          "admin.system-channel",
+          "user.custom-channel",
+          "canvas",
+          "creation",
+          "agent"
+        ],
+        "baseUrl": "https://888api.xin",
+        "requiresPublicMediaUrls": true,
+        "auth": {
+          "type": "bearer",
+          "field": "apiKey"
+        },
+        "parameters": [
+          {
+            "name": "model",
+            "type": "string",
+            "required": true,
+            "mapping": "model",
+            "values": [
+              "seedance2.5-301010-max"
+            ],
+            "description": "固定型号，不按相似名称猜测其它合同。"
+          },
+          {
+            "name": "prompt",
+            "type": "string",
+            "required": true,
+            "mapping": "prompt",
+            "description": "完整原始视频提示词。"
+          },
+          {
+            "name": "images",
+            "type": "media[]",
+            "mapping": "images",
+            "description": "最多 30 张公网可读取的参考图片，按 order 保持编号。"
+          },
+          {
+            "name": "videos",
+            "type": "media[]",
+            "mapping": "videos",
+            "description": "最多 10 段公网可读取的参考视频。"
+          },
+          {
+            "name": "audios",
+            "type": "media[]",
+            "mapping": "audios",
+            "description": "最多 10 段公网可读取的参考音频。"
+          },
+          {
+            "name": "duration",
+            "type": "integer",
+            "required": true,
+            "mapping": "duration",
+            "description": "4 至 30 秒整数。"
+          },
+          {
+            "name": "aspectRatio",
+            "type": "string",
+            "mapping": "ratio",
+            "description": "画幅比例，缺省 16:9。"
+          },
+          {
+            "name": "resolution",
+            "type": "string",
+            "mapping": "resolution",
+            "values": [
+              "720p"
+            ],
+            "description": "此型号固定 720p。"
+          },
+          {
+            "name": "generateAudio",
+            "type": "boolean",
+            "mapping": "native audio, not a request field",
+            "description": "原生音频保持开启；此合同没有关闭开关，不发送 generate_audio。"
+          }
+        ],
+        "validations": [
+          {
+            "assert": {
+              "$eq": [
+                {
+                  "$ref": "request.model"
+                },
+                "seedance2.5-301010-max"
+              ]
+            },
+            "message": "此插件只适配 888API seedance2.5-301010-max。"
+          },
+          {
+            "assert": {
+              "$gt": [
+                {
+                  "$len": {
+                    "$trim": {
+                      "$ref": "request.prompt"
+                    }
+                  }
+                },
+                0
+              ]
+            },
+            "message": "视频提示词不能为空。"
+          },
+          {
+            "assert": {
+              "$and": [
+                {
+                  "$gte": [
+                    {
+                      "$ref": "request.duration"
+                    },
+                    4
+                  ]
+                },
+                {
+                  "$lte": [
+                    {
+                      "$ref": "request.duration"
+                    },
+                    30
+                  ]
+                }
+              ]
+            },
+            "message": "888API MAX 视频时长须为 4 至 30 秒整数。"
+          },
+          {
+            "assert": {
+              "$in": [
+                {
+                  "$coalesce": [
+                    {
+                      "$ref": "request.resolution"
+                    },
+                    ""
+                  ]
+                },
+                [
+                  "",
+                  "720p",
+                  "720P"
+                ]
+              ]
+            },
+            "message": "888API MAX 仅支持 720p。"
+          },
+          {
+            "assert": {
+              "$in": [
+                {
+                  "$coalesce": [
+                    {
+                      "$ref": "request.aspectRatio"
+                    },
+                    ""
+                  ]
+                },
+                [
+                  "",
+                  "16:9",
+                  "9:16",
+                  "1:1",
+                  "4:3",
+                  "3:4",
+                  "21:9"
+                ]
+              ]
+            },
+            "message": "所选画幅不在本插件已声明范围内。"
+          },
+          {
+            "assert": {
+              "$in": [
+                {
+                  "$coalesce": [
+                    {
+                      "$ref": "request.operation"
+                    },
+                    ""
+                  ]
+                },
+                [
+                  "",
+                  "text_to_video",
+                  "reference_to_video"
+                ]
+              ]
+            },
+            "message": "此已核验合同仅开放文生视频和参考图生视频，请使用并行出片。"
+          },
+          {
+            "assert": {
+              "$lte": [
+                {
+                  "$len": {
+                    "$ref": "request.images"
+                  }
+                },
+                30
+              ]
+            },
+            "message": "888API MAX 最多 30 张参考图，不会截断素材。"
+          },
+          {
+            "assert": {
+              "$lte": [
+                {
+                  "$len": {
+                    "$ref": "request.videos"
+                  }
+                },
+                10
+              ]
+            },
+            "message": "888API MAX 最多 10 段参考视频，不会截断素材。"
+          },
+          {
+            "assert": {
+              "$lte": [
+                {
+                  "$len": {
+                    "$ref": "request.audios"
+                  }
+                },
+                10
+              ]
+            },
+            "message": "888API MAX 最多 10 段参考音频，不会截断素材。"
+          },
+          {
+            "assert": {
+              "$eq": [
+                {
+                  "$len": {
+                    "$filter": {
+                      "from": {
+                        "$ref": "request.images"
+                      },
+                      "as": "media",
+                      "where": {
+                        "$in": [
+                          {
+                            "$ref": "media.role"
+                          },
+                          [
+                            "first_frame",
+                            "last_frame",
+                            "first",
+                            "last",
+                            "mask"
+                          ]
+                        ]
+                      }
+                    }
+                  }
+                },
+                0
+              ]
+            },
+            "message": "本插件没有声明首尾帧或蒙版字段，不能把它们静默转成普通参考图。"
+          },
+          {
+            "assert": {
+              "$eq": [
+                {
+                  "$ref": "request.generateAudio"
+                },
+                true
+              ]
+            },
+            "message": "888API MAX 是原生音频型号，当前合同未提供关闭音频开关，请在模型能力中保持音频开启。"
+          },
+          {
+            "assert": {
+              "$eq": [
+                {
+                  "$ref": "request.watermark"
+                },
+                false
+              ]
+            },
+            "message": "该型号文档未提供水印开关，请使用服务器默认。"
+          }
+        ],
+        "create": {
+          "method": "POST",
+          "path": "/v1/videos",
+          "originPath": true,
+          "contentType": "application/json",
+          "body": {
+            "model": {
+              "$ref": "request.model"
+            },
+            "prompt": {
+              "$ref": "request.prompt"
+            },
+            "duration": {
+              "$ref": "request.duration"
+            },
+            "ratio": {
+              "$coalesce": [
+                {
+                  "$ref": "request.aspectRatio"
+                },
+                "16:9"
+              ]
+            },
+            "resolution": "720p",
+            "images": {
+              "$omitEmpty": {
+                "$map": {
+                  "from": {
+                    "$sortByOrder": {
+                      "$ref": "request.images"
+                    }
+                  },
+                  "as": "media",
+                  "in": {
+                    "$ref": "media.value"
+                  }
+                }
+              }
+            },
+            "videos": {
+              "$omitEmpty": {
+                "$map": {
+                  "from": {
+                    "$sortByOrder": {
+                      "$ref": "request.videos"
+                    }
+                  },
+                  "as": "media",
+                  "in": {
+                    "$ref": "media.value"
+                  }
+                }
+              }
+            },
+            "audios": {
+              "$omitEmpty": {
+                "$map": {
+                  "from": {
+                    "$sortByOrder": {
+                      "$ref": "request.audios"
+                    }
+                  },
+                  "as": "media",
+                  "in": {
+                    "$ref": "media.value"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "poll": {
+          "method": "GET",
+          "path": "/v1/videos/{{taskId}}",
+          "originPath": true
+        },
+        "result": {
+          "method": "GET",
+          "path": "/v1/videos/{{taskId}}/content",
+          "originPath": true,
+          "headers": {
+            "Accept": "video/mp4"
+          }
+        },
+        "response": {
+          "taskId": {
+            "$coalesce": [
+              {
+                "$ref": "response.id"
+              },
+              {
+                "$ref": "response.task_id"
+              },
+              {
+                "$ref": "response.data.id"
+              },
+              {
+                "$ref": "response.data.task_id"
+              },
+              {
+                "$ref": "taskId"
+              }
+            ]
+          },
+          "status": {
+            "$coalesce": [
+              {
+                "$ref": "response.status"
+              },
+              {
+                "$ref": "response.data.status"
+              },
+              "pending"
+            ]
+          },
+          "message": {
+            "$coalesce": [
+              {
+                "$ref": "response.error.message"
+              },
+              {
+                "$ref": "response.message"
+              },
+              {
+                "$ref": "response.fail_reason"
+              },
+              {
+                "$ref": "response.data.error.message"
+              }
+            ]
+          },
+          "videos": {
+            "$coalesce": [
+              {
+                "$ref": "response.url"
+              },
+              {
+                "$ref": "response.video_url"
+              },
+              {
+                "$ref": "response.result_url"
+              },
+              {
+                "$ref": "response.output_url"
+              },
+              {
+                "$ref": "response.metadata.url"
+              },
+              {
+                "$ref": "response.data.url"
+              },
+              {
+                "$ref": "response.data.video_url"
+              },
+              {
+                "$ref": "response.data.result_url"
+              },
+              {
+                "$ref": "response.data.metadata.url"
+              }
+            ]
+          },
+          "errorPaths": [
+            "error.code"
+          ],
+          "resultEphemeral": true
+        }
+      },
+      {
+        "id": "888-seedance-c5-local",
+        "label": "888API ? Seedance 2.0 C5 Fast",
+        "capabilities": [
+          "video"
+        ],
+        "scopes": [
+          "admin.system-channel",
+          "user.custom-channel",
+          "canvas",
+          "creation",
+          "agent"
+        ],
+        "baseUrl": "https://888api.xin",
+        "requiresPublicMediaUrls": true,
+        "auth": {
+          "type": "bearer",
+          "field": "apiKey"
+        },
+        "parameters": [
+          {
+            "name": "model",
+            "type": "string",
+            "required": true,
+            "mapping": "model",
+            "values": [
+              "seedance2.0-933-c5-fast"
+            ],
+            "description": "固定型号，不按相似名称猜测其它合同。"
+          },
+          {
+            "name": "prompt",
+            "type": "string",
+            "required": true,
+            "mapping": "prompt",
+            "description": "完整原始视频提示词。"
+          },
+          {
+            "name": "images",
+            "type": "media[]",
+            "mapping": "images",
+            "description": "?? 9 ????????????? order ?????"
+          },
+          {
+            "name": "videos",
+            "type": "media[]",
+            "mapping": "videos",
+            "description": "?? 3 ????????????"
+          },
+          {
+            "name": "audios",
+            "type": "media[]",
+            "mapping": "audios",
+            "description": "?? 3 ????????????"
+          },
+          {
+            "name": "duration",
+            "type": "integer",
+            "required": true,
+            "mapping": "duration",
+            "description": "4 ? 15 ????"
+          },
+          {
+            "name": "aspectRatio",
+            "type": "string",
+            "mapping": "ratio",
+            "description": "画幅比例，缺省 16:9。"
+          },
+          {
+            "name": "resolution",
+            "type": "string",
+            "mapping": "resolution",
+            "values": [
+              "720p"
+            ],
+            "description": "此型号固定 720p。"
+          },
+          {
+            "name": "generateAudio",
+            "type": "boolean",
+            "mapping": "native audio, not a request field",
+            "description": "原生音频保持开启；此合同没有关闭开关，不发送 generate_audio。"
+          }
+        ],
+        "validations": [
+          {
+            "assert": {
+              "$eq": [
+                {
+                  "$ref": "request.model"
+                },
+                "seedance2.0-933-c5-fast"
+              ]
+            },
+            "message": "此插件只适配 888API seedance2.0-933-c5-fast。"
+          },
+          {
+            "assert": {
+              "$gt": [
+                {
+                  "$len": {
+                    "$trim": {
+                      "$ref": "request.prompt"
+                    }
+                  }
+                },
+                0
+              ]
+            },
+            "message": "视频提示词不能为空。"
+          },
+          {
+            "assert": {
+              "$and": [
+                {
+                  "$gte": [
+                    {
+                      "$ref": "request.duration"
+                    },
+                    4
+                  ]
+                },
+                {
+                  "$lte": [
+                    {
+                      "$ref": "request.duration"
+                    },
+                    15
+                  ]
+                }
+              ]
+            },
+            "message": "888API C5 Fast ?????? 4 ? 15 ????"
+          },
+          {
+            "assert": {
+              "$in": [
+                {
+                  "$coalesce": [
+                    {
+                      "$ref": "request.resolution"
+                    },
+                    ""
+                  ]
+                },
+                [
+                  "",
+                  "720p",
+                  "720P"
+                ]
+              ]
+            },
+            "message": "888API C5 Fast 仅支持 720p。"
+          },
+          {
+            "assert": {
+              "$in": [
+                {
+                  "$coalesce": [
+                    {
+                      "$ref": "request.aspectRatio"
+                    },
+                    ""
+                  ]
+                },
+                [
+                  "",
+                  "16:9",
+                  "9:16",
+                  "1:1",
+                  "4:3",
+                  "3:4",
+                  "21:9"
+                ]
+              ]
+            },
+            "message": "所选画幅不在本插件已声明范围内。"
+          },
+          {
+            "assert": {
+              "$in": [
+                {
+                  "$coalesce": [
+                    {
+                      "$ref": "request.operation"
+                    },
+                    ""
+                  ]
+                },
+                [
+                  "",
+                  "text_to_video",
+                  "reference_to_video"
+                ]
+              ]
+            },
+            "message": "此已核验合同仅开放文生视频和参考图生视频，请使用并行出片。"
+          },
+          {
+            "assert": {
+              "$lte": [
+                {
+                  "$len": {
+                    "$ref": "request.images"
+                  }
+                },
+                9
+              ]
+            },
+            "message": "888API C5 Fast ?? 9 ????????????"
+          },
+          {
+            "assert": {
+              "$lte": [
+                {
+                  "$len": {
+                    "$ref": "request.videos"
+                  }
+                },
+                3
+              ]
+            },
+            "message": "888API C5 Fast ?? 3 ?????????????"
+          },
+          {
+            "assert": {
+              "$lte": [
+                {
+                  "$len": {
+                    "$ref": "request.audios"
+                  }
+                },
+                3
+              ]
+            },
+            "message": "888API C5 Fast ?? 3 ?????????????"
+          },
+          {
+            "assert": {
+              "$eq": [
+                {
+                  "$len": {
+                    "$filter": {
+                      "from": {
+                        "$ref": "request.images"
+                      },
+                      "as": "media",
+                      "where": {
+                        "$in": [
+                          {
+                            "$ref": "media.role"
+                          },
+                          [
+                            "first_frame",
+                            "last_frame",
+                            "first",
+                            "last",
+                            "mask"
+                          ]
+                        ]
+                      }
+                    }
+                  }
+                },
+                0
+              ]
+            },
+            "message": "本插件没有声明首尾帧或蒙版字段，不能把它们静默转成普通参考图。"
+          },
+          {
+            "assert": {
+              "$eq": [
+                {
+                  "$ref": "request.generateAudio"
+                },
+                true
+              ]
+            },
+            "message": "888API C5 Fast 是原生音频型号，当前合同未提供关闭音频开关，请在模型能力中保持音频开启。"
+          },
+          {
+            "assert": {
+              "$eq": [
+                {
+                  "$ref": "request.watermark"
+                },
+                false
+              ]
+            },
+            "message": "该型号文档未提供水印开关，请使用服务器默认。"
+          }
+        ],
+        "create": {
+          "method": "POST",
+          "path": "/v1/videos",
+          "originPath": true,
+          "contentType": "application/json",
+          "body": {
+            "model": {
+              "$ref": "request.model"
+            },
+            "prompt": {
+              "$ref": "request.prompt"
+            },
+            "duration": {
+              "$ref": "request.duration"
+            },
+            "ratio": {
+              "$coalesce": [
+                {
+                  "$ref": "request.aspectRatio"
+                },
+                "16:9"
+              ]
+            },
+            "resolution": "720p",
+            "images": {
+              "$omitEmpty": {
+                "$map": {
+                  "from": {
+                    "$sortByOrder": {
+                      "$ref": "request.images"
+                    }
+                  },
+                  "as": "media",
+                  "in": {
+                    "$ref": "media.value"
+                  }
+                }
+              }
+            },
+            "videos": {
+              "$omitEmpty": {
+                "$map": {
+                  "from": {
+                    "$sortByOrder": {
+                      "$ref": "request.videos"
+                    }
+                  },
+                  "as": "media",
+                  "in": {
+                    "$ref": "media.value"
+                  }
+                }
+              }
+            },
+            "audios": {
+              "$omitEmpty": {
+                "$map": {
+                  "from": {
+                    "$sortByOrder": {
+                      "$ref": "request.audios"
+                    }
+                  },
+                  "as": "media",
+                  "in": {
+                    "$ref": "media.value"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "poll": {
+          "method": "GET",
+          "path": "/v1/videos/{{taskId}}",
+          "originPath": true
+        },
+        "result": {
+          "method": "GET",
+          "path": "/v1/videos/{{taskId}}/content",
+          "originPath": true,
+          "headers": {
+            "Accept": "video/mp4"
+          }
+        },
+        "response": {
+          "taskId": {
+            "$coalesce": [
+              {
+                "$ref": "response.id"
+              },
+              {
+                "$ref": "response.task_id"
+              },
+              {
+                "$ref": "response.data.id"
+              },
+              {
+                "$ref": "response.data.task_id"
+              },
+              {
+                "$ref": "taskId"
+              }
+            ]
+          },
+          "status": {
+            "$coalesce": [
+              {
+                "$ref": "response.status"
+              },
+              {
+                "$ref": "response.data.status"
+              },
+              "pending"
+            ]
+          },
+          "message": {
+            "$coalesce": [
+              {
+                "$ref": "response.error.message"
+              },
+              {
+                "$ref": "response.message"
+              },
+              {
+                "$ref": "response.fail_reason"
+              },
+              {
+                "$ref": "response.data.error.message"
+              }
+            ]
+          },
+          "videos": {
+            "$coalesce": [
+              {
+                "$ref": "response.url"
+              },
+              {
+                "$ref": "response.video_url"
+              },
+              {
+                "$ref": "response.result_url"
+              },
+              {
+                "$ref": "response.output_url"
+              },
+              {
+                "$ref": "response.metadata.url"
+              },
+              {
+                "$ref": "response.data.url"
+              },
+              {
+                "$ref": "response.data.video_url"
+              },
+              {
+                "$ref": "response.data.result_url"
+              },
+              {
+                "$ref": "response.data.metadata.url"
+              }
+            ]
+          },
+          "errorPaths": [
+            "error.code"
+          ],
+          "resultEphemeral": true
+        }
+      }
+    ]
+  }
+}
